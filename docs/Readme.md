@@ -1,6 +1,6 @@
 # Readme
 
-[Download the trained model weights](https://pan.baidu.com/s/1QlU8bFInYxgXWQxiHFIuIA?pwd=mwc0) 
+[Download the trained model weights](https://pan.baidu.com/s/1QlU8bFInYxgXWQxiHFIuIA?pwd=mwc0) .
 Click the link to download from Baidu Cloud, or contact 872041345@qq.com.
 ## 完整流程
 
