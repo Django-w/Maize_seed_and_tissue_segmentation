@@ -1,0 +1,114 @@
+# Swin UNETR 种子分割配置文件
+
+# 数据路径配置
+data:
+  # 原始数据路径（相对于项目根目录）
+  raw_data_root: "../低分辨率-yumi/原始数据"
+  annotation_root: "../低分辨率-yumi/标注数据"  # 或使用绝对路径: "F:/A31 Micro-CT/高分辨率-yumi/标注数据"
+  processed_data_root: "./data/processed"
+  
+  # 标注文件夹名称
+  embryo_endosperm_dir: "yumi-胚与胚乳"
+  cavity_dir: "yumi-空腔"
+  hard_soft_endosperm_dir: "yumi-硬质胚乳与粉质胚乳"
+  
+  # 标签映射：种胚=1, 胚乳=2, 空腔=3
+  label_mapping:
+    embryo: 1
+    endosperm: 2
+    cavity: 3
+
+# 模型配置
+model:
+  name: "swin_unetr"
+  in_channels: 1
+  out_channels: 4  # 背景 + 种胚 + 胚乳 + 空腔
+  img_size: [96, 96, 96]  # 输入图像尺寸（用于数据预处理，模型本身不需要）
+  feature_size: 48  # 特征尺寸，可调整为24或96（48已足够，增大到96会显著增加显存和训练时间）
+  num_heads: [3, 6, 12, 24]  # 各层的注意力头数
+  depths: [2, 2, 2, 2]  # 各层的深度
+  window_size: 7  # Swin Transformer窗口大小
+  patch_size: 2  # 图像patch大小
+  qkv_bias: true  # 是否使用QKV偏置
+  mlp_ratio: 4.0  # MLP维度比例
+  norm_name: "instance"  # 归一化类型
+  dropout_rate: 0.0  # Dropout率
+  attn_drop_rate: 0.0  # 注意力Dropout率
+  dropout_path_rate: 0.0  # 路径Dropout率
+  use_checkpoint: false  # 是否使用梯度检查点（节省内存）
+  save_path: "./models/swin_unetr_seed_seg.pth"
+
+# 训练配置
+training:
+  batch_size: 2
+  num_epochs: 50  # 增加训练轮数，给模型更多时间达到Dice>=0.9
+  learning_rate: 0.0001  # 1e-4，使用浮点数格式避免YAML解析问题
+  weight_decay: 0.00001  # 1e-5
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停机制（调整为更宽松，给模型更多机会达到0.9）
+  early_stopping:
+    enabled: false          # 是否启用早停
+    patience: 15            # 增加patience到15，给更多时间提升到0.9
+    min_delta: 0.0005       # 降低min_delta，更敏感地检测提升
+    restore_best_weights: true  # 是否恢复最佳权重
+    target_dice: 0.9        # 目标Dice值，达到后可以提前停止
+
+  # 损失函数权重
+  loss:
+    # 基础损失权重（提升Dice到0.9+，增加基础损失权重）
+    dice_weight: 0.5
+    ce_weight: 0.5
+    # 创新损失权重（进一步降低，让基础损失占主导）
+    boundary_weight: 0.2     # 适度增加边界损失，帮助边界精度
+    shape_weight: 0.2        # 保持较低权重
+    class_weight_weight: 0.2  # 适度增加类别加权，处理不平衡
+    # 损失函数开关
+    use_boundary_loss: false     # 是否使用边界感知损失
+    use_shape_loss: false     # 是否使用形状约束损失
+    use_class_weight: false   # 是否使用类别不平衡加权
+    # 边界损失参数
+    boundary_loss_weight: 2.0  # 边界区域的损失权重倍数
+    boundary_width: 2          # 边界宽度（体素数）
+
+  # 数据增强
+
+  augmentation:
+    enabled: False
+    version: default
+
+
+  # 训练/验证/测试集划分
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+
+
+dataset:
+  sliding_window:
+    enabled: true          # true is use slide windows
+    patch_size: [96, 96, 96]   # slide windows size
+    step_size: [48, 48, 48]   # slide windows step
+
+
+# 评估配置
+evaluation:
+  metrics: ["dice", "iou"]
+  save_predictions: true
+  prediction_dir: "./results/predictions"
+  visualization_dir: "./results/visualizations"
+
+# 推理配置
+inference:
+  checkpoint_path: "/home/songanran/pyProject/Swin-unetr/project/models/swin_unetr_seed_seg.pth"
+  output_dir: "./results/inference-test"
+  save_probability_maps: True
+
+# 设备配置
+device: "cuda"  # "cuda" 或 "cpu"
+num_workers: 4
+pin_memory: true
+

@@ -1,0 +1,114 @@
+# 对比实验5：nnUnet模型
+# nnU-Net-style baseline: vanilla 3D U-Net backbone implemented via MONAI DynUNet.( compare with Swin Unetr
+
+# 数据路径配置
+data:
+  raw_data_root: "../高分辨率-yumi/原始数据"  # 相对于项目根目录
+  annotation_root: "../高分辨率-yumi/标注数据"  # 相对于项目根目录
+  processed_data_root: "./data/processed"  # 相对于项目根目录
+
+  # 标注文件夹名称
+  embryo_endosperm_dir: "yumi-胚与胚乳"
+  cavity_dir: "yumi-空腔"
+  hard_soft_endosperm_dir: "yumi-硬质胚乳与粉质胚乳"
+
+  # 标签映射：种胚=1, 胚乳=2, 空腔=3
+  label_mapping:
+    embryo: 1
+    endosperm: 2
+    cavity: 3
+
+# Model configuration
+model:
+  name: "nnunet"
+  in_channels: 1
+  out_channels: 4                     # background + embryo + endosperm + cavity
+  img_size: [96, 96, 96]
+
+  # U-Net channel widths per stage (filters). Typical nnU-Net 3D uses 320 at the deepest stage,
+  # but here we keep a lighter setting to fit your 96^3 patches and limited GPU memory.
+  channels: [16, 32, 64, 128, 256]
+
+  # Downsampling strides:
+  # Option A (compact, UNet-style): 4 downsamples only, your create_nnunet_model() should auto-prepend 1 -> [1,2,2,2,2]
+  strides: [[1, 1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2]]
+
+  # Option B (strict DynUNet stage-style; use this if you do NOT implement the auto-fix):
+  # strides: [[1,1,1], [2,2,2], [2,2,2], [2,2,2], [2,2,2]]
+
+  # Convolution kernel sizes for each stage (can be compact or explicit)
+  # If you keep it compact [3], your create_nnunet_model() can expand it to 5 stages; otherwise define explicitly.
+  kernel_size: [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+
+  # Upsample kernel sizes (N-1 stages). Same note: [2] can be expanded to 4 stages in create_nnunet_model().
+  upsample_kernel_size: [[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2]]
+
+  # Normalization & regularization
+  norm_name: "instance"
+  dropout_rate: 0.0                   # if you map this to DynUNet 'dropout' later
+
+  # Deep supervision (usually off for fair baseline unless you also enable it for others)
+  deep_supervision: false
+
+  save_path: "./models/nnunet_seed_seg.pth"
+
+# Training configuration
+training:
+  batch_size: 2
+  num_epochs: 50
+  learning_rate: 0.0001               # 1e-4
+  weight_decay: 0.00001               # 1e-5
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  early_stopping:
+    enabled: false
+    patience: 15
+    min_delta: 0.0005
+    restore_best_weights: true
+    target_dice: 0.9
+
+  # Loss configuration (keep identical across baselines for fair comparison)
+  loss:
+    dice_weight: 0.5
+    ce_weight: 0.5
+    boundary_weight: 0.15
+    shape_weight: 0.05
+    class_weight_weight: 0.1
+
+    use_boundary_loss: false
+    use_shape_loss: false
+    use_class_weight: false
+
+    boundary_loss_weight: 2.0
+    boundary_width: 2
+
+  # Augmentation configuration
+  augmentation:
+    enabled: false
+    version: v2
+
+  # Train/val/test split
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+
+# Evaluation configuration
+evaluation:
+  metrics: ["dice", "iou"]
+  save_predictions: true
+  prediction_dir: "./results/predictions"
+  visualization_dir: "./results/visualizations"
+
+# Inference configuration
+inference:
+  checkpoint_path: "/home/songanran/pyProject/Swin-unetr/project/models/nnunet_seed_seg.pth"
+  output_dir: "./results/inference"
+  save_probability_maps: True
+
+# Runtime configuration
+device: "cuda"
+num_workers: 4
+pin_memory: true

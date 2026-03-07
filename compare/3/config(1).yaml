@@ -1,0 +1,89 @@
+# 对比实验3：VNet模型
+# 另一种经典的3D医学图像分割模型（与Swin UNETR对比）
+
+# 数据路径配置
+data:
+  raw_data_root: "../高分辨率-yumi/原始数据"  # 相对于项目根目录
+  annotation_root: "../高分辨率-yumi/标注数据"  # 相对于项目根目录
+  processed_data_root: "./data/processed"  # 相对于项目根目录
+  
+  # 标注文件夹名称
+  embryo_endosperm_dir: "yumi-胚与胚乳"
+  cavity_dir: "yumi-空腔"
+  hard_soft_endosperm_dir: "yumi-硬质胚乳与粉质胚乳"
+  
+  # 标签映射：种胚=1, 胚乳=2, 空腔=3
+  label_mapping:
+    embryo: 1
+    endosperm: 2
+    cavity: 3
+
+# 模型配置
+model:
+  name: "vnet"  # VNet：用于3D医学图像分割的经典模型
+  in_channels: 1
+  out_channels: 4  # 背景 + 种胚 + 胚乳 + 空腔
+  img_size: [96, 96, 96]
+  act: "PRELU"  # 激活函数
+  dropout: 0.0  # Dropout率（VNet不支持norm参数）
+  save_path: "./models/vnet_model.pth"
+
+# 训练配置
+training:
+  batch_size: 2
+  num_epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+  
+  # 早停机制
+  early_stopping:
+    enabled: false
+    patience: 15
+    min_delta: 0.0005
+    restore_best_weights: true
+    target_dice: 0.9
+  
+  # 损失函数权重
+  loss:
+    dice_weight: 0.5
+    ce_weight: 0.5
+    boundary_weight: 0.15
+    shape_weight: 0.05
+    class_weight_weight: 0.1
+    use_boundary_loss: false
+    use_shape_loss: false
+    use_class_weight: false
+    boundary_loss_weight: 2.0
+    boundary_width: 2
+  
+  # 数据增强
+  augmentation:
+    enabled: false
+    version: v4
+  
+  # 训练/验证/测试集划分
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+
+# 评估配置
+evaluation:
+  metrics: ["dice", "iou"]
+  save_predictions: true
+  prediction_dir: "./results/predictions"
+  visualization_dir: "./results/visualizations"
+
+# 推理配置
+inference:
+  checkpoint_path: "./models/vnet_model.pth"
+  output_dir: "./results/inference"
+  save_probability_maps: false
+
+# 设备配置
+device: "cuda"
+num_workers: 4
+pin_memory: true

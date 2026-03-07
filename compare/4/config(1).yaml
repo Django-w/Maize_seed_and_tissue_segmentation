@@ -1,0 +1,118 @@
+# 对比实验4：Unetr模型
+# 经典的CNN-based 3D医学图像分割模型（与Swin UNETR对比）
+
+# 数据路径配置
+data:
+  raw_data_root: "../高分辨率-yumi/原始数据"  # 相对于项目根目录
+  annotation_root: "../高分辨率-yumi/标注数据"  # 相对于项目根目录
+  processed_data_root: "./data/processed"  # 相对于项目根目录
+
+  # 标注文件夹名称
+  embryo_endosperm_dir: "yumi-胚与胚乳"
+  cavity_dir: "yumi-空腔"
+  hard_soft_endosperm_dir: "yumi-硬质胚乳与粉质胚乳"
+
+  # 标签映射：种胚=1, 胚乳=2, 空腔=3
+  label_mapping:
+    embryo: 1
+    endosperm: 2
+    cavity: 3
+
+# Model configuration
+model:
+  name: "unetr"
+  in_channels: 1
+  out_channels: 4                  # background + embryo + endosperm + cavity
+  img_size: [96, 96, 96]           # UNETR is sensitive to input size; keep consistent with Swin-UNETR
+
+  # UNETR width (feature channels in the CNN encoder/decoder of UNETR)
+  # Tip: if you want closer capacity to Swin-UNETR(feature_size=48), try 32 or 48.
+  feature_size: 48
+
+  # Transformer backbone settings
+  hidden_size: 768                 # ViT hidden dimension
+  mlp_dim: 3072                    # MLP dimension inside transformer blocks
+  num_heads: 12                    # number of attention heads
+  num_layers: 8
+  # Patch projection type in MONAI UNETR:
+  # - "conv": convolutional projection (often more stable for medical/volumetric inputs)
+  # - "perceptron": linear projection (ViT-style)
+  proj_type: "conv"
+
+  # Architectural switches
+  conv_block: true                 # use conv blocks in encoder/decoder
+  res_block: true                  # use residual blocks
+
+  # Normalization & regularization
+  norm_name: "instance"            # typically "instance" for 3D segmentation
+  dropout_rate: 0.0                # dropout in transformer blocks
+
+  # Other options (match MONAI UNETR signature)
+  spatial_dims: 3
+  qkv_bias: true
+  save_attn: false                 # whether to store attention maps (usually false to save memory)
+
+  # Model checkpoint path (optional; can also be handled by trainer)
+  save_path: "./models/unetr_seed_seg.pth"
+
+# Training configuration
+training:
+  batch_size: 2
+  num_epochs: 50                   # keep consistent with Swin-UNETR baseline
+  learning_rate: 0.0001            # 1e-4
+  weight_decay: 0.00001            # 1e-5
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # Early stopping (optional)
+  early_stopping:
+    enabled: false
+    patience: 15
+    min_delta: 0.0005
+    restore_best_weights: true
+    target_dice: 0.9
+
+  # Loss configuration (keep exactly the same as Swin-UNETR for fair comparison)
+  loss:
+    dice_weight: 0.5
+    ce_weight: 0.5
+    boundary_weight: 0.15
+    shape_weight: 0.05
+    class_weight_weight: 0.1
+
+    use_boundary_loss: false
+    use_shape_loss: false
+    use_class_weight: false
+
+    boundary_loss_weight: 2.0
+    boundary_width: 2
+
+  # Data augmentation (keep consistent with your Swin-UNETR config)
+  augmentation:
+    enabled: false
+    version: v2
+
+  # Train/val/test split
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+
+# Evaluation configuration
+evaluation:
+  metrics: ["dice", "iou"]
+  save_predictions: true
+  prediction_dir: "./results/predictions"
+  visualization_dir: "./results/visualizations"
+
+# Inference configuration
+inference:
+  checkpoint_path: "/home/songanran/pyProject/Swin-unetr/project/models/unetr_seed_seg.pth"
+  output_dir: "./results/inference"
+  save_probability_maps: True
+
+# Runtime configuration
+device: "cuda"                     # "cuda" or "cpu"
+num_workers: 4
+pin_memory: true
