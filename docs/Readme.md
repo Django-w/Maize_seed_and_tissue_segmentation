@@ -1,6 +1,6 @@
-# Readme
+<img width="1585" height="927" alt="image" src="https://github.com/user-attachments/assets/2d758ae7-c61f-4ec7-a9b7-c30f5f1596ac" /># Readme
 
-[Download the trained model weights](https://pan.baidu.com/s/1QlU8bFInYxgXWQxiHFIuIA?pwd=mwc0) .
+[Download the trained model weights](https://pan.baidu.com/s/1xDW_WIv4Gn2D_A4obnabPw?pwd=6t5r) .
 Click the link to download from Baidu Cloud, or contact 872041345@qq.com.
 ## 完整流程
 
